@@ -1,28 +1,42 @@
 #!/bin/bash -e
 #
-# S2I run script for the 'sti-scala' image.
+# S2I run script for the 'scala' image.
 # The run script executes the server that runs your application.
 #
 # For more information see the documentation:
 #	https://github.com/openshift/source-to-image/blob/master/docs/builder_image.md
 #
 
-SCRIPT_COUNT=$(find target/universal/stage/bin -type f -executable | wc -l)
+#Set the debug port to 5858 by default.
+if [ -z "$DEBUG_PORT" ]; then
+  export DEBUG_PORT=5005
+fi
 
-# Set the environment to production by default.
+# Set the environment to development by default.
 if [ -z "$DEV_MODE" ]; then
   export DEV_MODE=false
 fi
 
 if [ "$DEV_MODE" == true ]; then
-  echo "---> Running application in development mode"
-  sbt run
+  echo "Launching via SBT"
+  exec ./sbt -ivy /opt/app-root/src/.ivy2 -sbt-dir /opt/app-root/src/.sbt -sbt-boot /opt/app-root/src/.sbt/boot -jvm-debug ${DEBUG_PORT} run
 else
-  if [ "$SCRIPT_COUNT" -eq "1" ]; then
-    SCRIPT=$(find target/universal/stage/bin -type f -executable)
-    exec $SCRIPT -Dpidfile.path=/tmp/app.pid
+  echo "Launching via script"
+  if [ -d "./bin" ]; then
+    APP_BINARY_PATH="./bin/"
+  elif [ -d "./target/universal/stage/bin" ]; then
+    APP_BINARY_PATH="./target/universal/stage/bin/"
+  fi
+
+  if [ -v APP_BINARY_PATH ]; then
+    if [ $(find $APP_BINARY_PATH -type f -executable | wc -l) -eq 1 ]; then
+      exec $(find $APP_BINARY_PATH -type f -executable)
+    elif [ -v SBT_APP_NAME ]; then
+      exec "$APP_BINARY_PATH$SBT_APP_NAME"
+    else
+      echo "Could not detect proper start command in $APP_BINARY_PATH"
+    fi
   else
-    echo "Found $SCRIPT_COUNT scripts instead of one. Exiting."
-    exit 0
+    echo "Could not detect proper start command in $(ls)"
   fi
 fi
