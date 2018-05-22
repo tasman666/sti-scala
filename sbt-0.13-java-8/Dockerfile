@@ -24,7 +24,7 @@ RUN chown -R 1001:0 /opt/app-root/src/.ivy2; chmod -R g+rw /opt/app-root/src/.iv
 COPY .credentials /opt/app-root/src/.ivy2/.credentials
 
 RUN echo 1 | alternatives --config java
-RUN echo 2 | alternatives --config javac
+RUN echo 1 | alternatives --config javac
 
 COPY ./s2i/bin/ $STI_SCRIPTS_PATH
 
